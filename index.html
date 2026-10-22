@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  MI CRONOGRAMA DE ESTUDIO (Cisco NetAcad)
+  Un solo archivo: HTML (lo que se ve) + CSS (los colores y el diseño)
+  + JavaScript (lo que hace que la página funcione).
+  Todo se guarda en TU navegador (localStorage). No hay servidor.
+  =====================================================================
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Esta línea hace que se vea bien en el celular -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi cronograma de estudio</title>
+
+<style>
+/* ==================== 1. ESTILOS (CSS) ==================== */
+
+/* Colores y medidas que uso en toda la página */
+:root {
+  --fondo: #f3f5f9;
+  --tarjeta: #ffffff;
+  --texto: #1f2937;
+  --suave: #6b7280;
+  --borde: #d9dee7;
+  --principal: #2563eb;
+  --alto-hora: 44px;      /* alto de una hora en el calendario */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+main { max-width: 1100px; margin: 0 auto; padding: 12px; }
+
+header.cabecera {
+  background: var(--principal);
+  color: #fff;
+  padding: 16px 12px;
+}
+header.cabecera h1 { margin: 0; font-size: 1.4rem; }
+header.cabecera p  { margin: 4px 0 0; opacity: .9; }
+
+section.caja {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+section.caja h2 { margin: 0 0 10px; font-size: 1.2rem; }
+
+/* Botones */
+button, .boton {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--borde);
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+}
+button:hover { background: #eef2f8; }
+button.principal { background: var(--principal); color: #fff; border-color: var(--principal); }
+button.principal:hover { background: #1d4fd0; }
+button.peligro { color: #b91c1c; border-color: #f0b4b4; }
+
+.barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.barra .titulo-dia { flex: 1 1 200px; font-weight: 700; font-size: 1.05rem; }
+
+/* Barra de progreso */
+.progreso { background: #e5e9f0; border-radius: 99px; height: 12px; overflow: hidden; }
+.progreso > div { background: #16a34a; height: 100%; width: 0; transition: width .3s; }
+.texto-progreso { font-size: .9rem; color: var(--suave); margin: 4px 0 10px; }
+
+/* Lista de tareas */
+ul.lista { list-style: none; margin: 0; padding: 0; }
+li.item {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  border: 1px solid var(--borde);
+  border-left: 8px solid var(--color);   /* el color depende del tipo */
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+li.item .check { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+li.item input[type=checkbox] { width: 24px; height: 24px; cursor: pointer; }
+li.item .hora { font-variant-numeric: tabular-nums; color: var(--suave); font-size: .9rem; }
+li.item .texto { flex: 1 1 160px; cursor: pointer; }
+li.item .botones { display: flex; gap: 6px; }
+li.item.hecho .texto b { text-decoration: line-through; color: var(--suave); }
+li.item.hecho { background: #f5f7fa; }
+li.item.ahora { box-shadow: 0 0 0 3px #fde68a; }
+li.item.compacto .botones { display: none; }     /* en la semana se oculta, se toca el texto */
+
+.chip {
+  display: inline-block; font-size: .75rem; color: #fff; background: var(--color);
+  padding: 1px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle;
+}
+.ahora-marca {
+  font-size: .75rem; font-weight: 700; background: #f59e0b; color: #fff;
+  padding: 1px 8px; border-radius: 99px; margin-left: 6px;
+}
+.vacio { color: var(--suave); padding: 10px 0; }
+
+/* Leyenda de colores */
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .85rem; margin-bottom: 10px; }
+.leyenda span::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  background: var(--color); margin-right: 5px; vertical-align: -1px;
+}
+
+/* ---------- Calendario semanal (pantalla ancha) ---------- */
+.semana-grid { display: grid; grid-template-columns: 46px repeat(7, 1fr); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+.semana-grid .cab { background: #eef2f8; text-align: center; padding: 6px 2px; font-size: .85rem; border-left: 1px solid var(--borde); border-bottom: 1px solid var(--borde); }
+.semana-grid .cab.hoy { background: #fde68a; font-weight: 700; }
+.semana-grid .horas { position: relative; height: calc(var(--alto-hora) * 17); }
+.semana-grid .horas span { position: absolute; right: 4px; font-size: .7rem; color: var(--suave); transform: translateY(-50%); }
+.semana-grid .col {
+  position: relative; height: calc(var(--alto-hora) * 17);
+  border-left: 1px solid var(--borde);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--alto-hora) - 1px), #e8ebf1 calc(var(--alto-hora) - 1px), #e8ebf1 var(--alto-hora));
+}
+.semana-grid .col.hoy { background-color: #fffbeb; }
+.bloque {
+  position: absolute; overflow: hidden; cursor: pointer;
+  background: var(--color); color: #fff; border-radius: 4px;
+  padding: 1px 4px; font-size: .72rem; line-height: 1.2;
+  border: 1px solid #fff;
+}
+.bloque.hecho { opacity: .4; text-decoration: line-through; }
+.bloque small { display: block; opacity: .9; }
+
+/* ---------- Semana en lista (celular) ---------- */
+.semana-lista .dia-tarjeta { margin-bottom: 14px; }
+.semana-lista h3 { margin: 0 0 6px; font-size: 1rem; }
+.semana-lista h3.hoy { background: #fde68a; padding: 2px 8px; border-radius: 6px; }
+
+/* En pantallas anchas se ve el calendario; en celular la lista */
+@media (min-width: 900px) { .semana-lista { display: none; } }
+@media (max-width: 899px) { .semana-grid  { display: none; } }
+
+/* ---------- Panel "¿Cabe todo?" ---------- */
+.curso { border: 1px solid var(--borde); border-left: 8px solid var(--color); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.curso h3 { margin: 0 0 4px; font-size: 1rem; }
+.curso .fila { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .9rem; color: var(--suave); margin-bottom: 6px; }
+.curso input[type=number] { width: 70px; font: inherit; padding: 4px; }
+.estado-ok   { color: #15803d; font-weight: 700; }
+.estado-mal  { color: #b91c1c; font-weight: 700; }
+.estado-med  { color: #b45309; font-weight: 700; }
+.aviso { background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+
+/* ---------- Ventana para agregar / editar ---------- */
+dialog { border: 1px solid var(--borde); border-radius: 12px; padding: 16px; width: min(440px, 94vw); }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+dialog h2 { margin-top: 0; }
+dialog label { display: block; margin-bottom: 10px; font-size: .9rem; color: var(--suave); }
+dialog input[type=text], dialog input[type=date], dialog input[type=time], dialog select {
+  display: block; width: 100%; font: inherit; padding: 8px; margin-top: 3px;
+  border: 1px solid var(--borde); border-radius: 8px; color: var(--texto);
+}
+dialog .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+dialog .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+/* Mensajito que aparece abajo */
+#aviso {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px;
+  opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 50; max-width: 90vw;
+}
+#aviso.ver { opacity: 1; }
+
+details summary { cursor: pointer; font-weight: 700; }
+</style>
+</head>
+
+<body>
+
+<header class="cabecera">
+  <h1>📚 Mi cronograma de estudio</h1>
+  <p id="fecha-hoy"></p>
+</header>
+
+<main>
+
+  <!-- ==================== QUÉ HAGO HOY ==================== -->
+  <section class="caja" id="seccion-hoy">
+    <h2>✅ Qué hago hoy</h2>
+    <div class="barra">
+      <button id="dia-ant">◀ Día anterior</button>
+      <button id="dia-hoy">Hoy</button>
+      <button id="dia-sig">Día siguiente ▶</button>
+      <button id="btn-agregar" class="principal">➕ Agregar tarea</button>
+    </div>
+    <div class="titulo-dia" id="titulo-dia" style="font-weight:700;margin-bottom:6px"></div>
+    <div class="progreso"><div id="barra-dia"></div></div>
+    <div class="texto-progreso" id="texto-dia"></div>
+    <ul class="lista" id="lista-hoy"></ul>
+  </section>
+
+  <!-- ==================== CALENDARIO DE LA SEMANA ==================== -->
+  <section class="caja" id="seccion-semana">
+    <h2>📅 Mi semana</h2>
+    <div class="barra">
+      <button id="sem-ant">◀ Semana anterior</button>
+      <button id="sem-hoy">Esta semana</button>
+      <button id="sem-sig">Semana siguiente ▶</button>
+    </div>
+    <div class="titulo-dia" id="titulo-semana" style="font-weight:700;margin-bottom:6px"></div>
+    <div class="progreso"><div id="barra-sem"></div></div>
+    <div class="texto-progreso" id="texto-sem"></div>
+    <div class="leyenda" id="leyenda"></div>
+    <div class="semana-grid" id="semana-grid"></div>
+    <div class="semana-lista" id="semana-lista"></div>
+  </section>
+
+  <!-- ==================== ¿CABE TODO? ==================== -->
+  <section class="caja" id="seccion-cursos">
+    <h2>🎯 ¿Me alcanza el tiempo?</h2>
+    <div id="resumen-cursos"></div>
+    <div id="lista-cursos"></div>
+  </section>
+
+  <!-- ==================== OPCIONES ==================== -->
+  <section class="caja">
+    <details>
+      <summary>⚙️ Más opciones (copia de seguridad y rehacer el plan)</summary>
+      <p>Tus datos se guardan solo en <b>este</b> navegador. Para pasarlos a otro aparato (celular ↔ PC) guarda una copia y cárgala allá.</p>
+      <div class="barra">
+        <button id="btn-exportar">💾 Guardar copia en un archivo</button>
+        <button id="btn-importar">📂 Cargar copia desde un archivo</button>
+        <input type="file" id="archivo" accept=".json,application/json" hidden>
+        <button id="btn-rehacer" class="peligro">🔁 Rehacer el plan desde cero</button>
+      </div>
+    </details>
+  </section>
+</main>
+
+<!-- Ventana para agregar o editar una tarea -->
+<dialog id="dlg">
+  <form id="form" autocomplete="off">
+    <h2 id="dlg-titulo">Agregar tarea</h2>
+    <label>¿Qué voy a hacer?
+      <input type="text" id="f-titulo" placeholder="Ejemplo: Repasar capítulo 3">
+    </label>
+    <label>Día
+      <input type="date" id="f-fecha" required>
+    </label>
+    <div class="dos">
+      <label>Desde
+        <input type="time" id="f-ini" required>
+      </label>
+      <label>Hasta
+        <input type="time" id="f-fin" required>
+      </label>
+    </div>
+    <label>Tipo (da el color)
+      <select id="f-tipo"></select>
+    </label>
+    <label>Curso (solo si es de estudio)
+      <select id="f-curso"></select>
+    </label>
+    <label id="fila-hecho"><input type="checkbox" id="f-hecho"> Ya la hice</label>
+    <div class="acciones">
+      <button type="button" id="f-borrar" class="peligro">🗑 Borrar</button>
+      <button type="button" id="f-cancelar">Cancelar</button>
+      <button type="submit" class="principal">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="aviso"></div>
+
+<noscript>Necesitas activar JavaScript para usar esta página.</noscript>
+
+<script>
+/* ==================== 2. DATOS FIJOS (aquí puedes cambiar cosas) ==================== */
+
+// Primer y último día del plan
+const INICIO = '2026-10-22';
+const FIN    = '2027-01-31';
+// Desde este día empiezas a trabajar (lunes a viernes)
+const PRIMER_DIA_TRABAJO = '2026-10-29';
+
+// Tipos de actividad y su color
+const TIPOS = {
+  cisco:    { nombre: 'Estudio Cisco',        color: '#2563eb' },
+  ingles:   { nombre: 'Inglés',               color: '#0d9488' },
+  trabajo:  { nombre: 'Trabajo',              color: '#6b7280' },
+  clases:   { nombre: 'Tareas de mis clases', color: '#7c3aed' },
+  casa:     { nombre: 'Oficios de la casa',   color: '#ea580c' },
+  comida:   { nombre: 'Comida',               color: '#a16207' },
+  descanso: { nombre: 'Descanso',             color: '#15803d' },
+  otro:     { nombre: 'Otro',                 color: '#db2777' }
+};
+
+// Los cursos, en el orden en que los voy a estudiar (primero el que vence antes).
+// "horas" es un cálculo mío de cuántas horas necesitas. Puedes cambiarlo
+// después en la sección "¿Me alcanza el tiempo?".
+const CURSOS = [
+  { id: 'ing1',   nombre: 'Inglés para TI 1',   tipo: 'ingles', limite: '2026-11-22', horas: 40 },
+  { id: 'ing2',   nombre: 'Inglés para TI 2',   tipo: 'ingles', limite: '2026-11-22', horas: 40 },
+  { id: 'cyber',  nombre: 'CyberOps Associate', tipo: 'cisco',  limite: '2026-12-31', horas: 80 },
+  { id: 'ccna1',  nombre: 'CCNA 1',             tipo: 'cisco',  limite: '2027-01-31', horas: 80 },
+  { id: 'ccna2',  nombre: 'CCNA 2',             tipo: 'cisco',  limite: '2027-01-31', horas: 80 },
+  { id: 'ccna3',  nombre: 'CCNA 3',             tipo: 'cisco',  limite: '2027-01-31', horas: 80 },
+  { id: 'devnet', nombre: 'DevNet Associate',   tipo: 'cisco',  limite: '2027-01-31', horas: 80 }
+];
+
+// Cómo es un día. Cada línea: [desde, hasta, nombre, tipo].
+// El tipo 'estudio' es un hueco que el programa llena con el curso que toca.
+const PLANTILLAS = {
+  // Días con el día completo libre (22 al 28 de octubre)
+  libre: [
+    ['07:00','07:30','Desayuno','comida'],
+    ['07:30','08:00','Oficios de la casa','casa'],
+    ['08:00','10:00','','estudio'],
+    ['10:00','10:30','Descanso','descanso'],
+    ['10:30','12:30','','estudio'],
+    ['12:30','13:30','Almuerzo','comida'],
+    ['13:30','14:30','Descanso','descanso'],
+    ['14:30','16:30','','estudio'],
+    ['16:30','18:00','Tareas de mis clases','clases'],
+    ['18:00','19:00','Oficios de la casa','casa'],
+    ['19:00','20:00','Cena','comida'],
+    ['20:00','21:30','Descanso libre','descanso']
+  ],
+  // Lunes a viernes trabajando (7-12 y 14-18)
+  trabajo: [
+    ['06:00','07:00','Desayuno y salir al trabajo','comida'],
+    ['07:00','12:00','Trabajo','trabajo'],
+    ['12:00','13:00','Almuerzo','comida'],
+    ['13:00','14:00','Descanso','descanso'],
+    ['14:00','18:00','Trabajo','trabajo'],
+    ['18:00','18:30','Oficios de la casa','casa'],
+    ['18:30','19:00','Cena','comida'],
+    ['19:00','21:00','','estudio'],
+    ['21:00','22:00','Tareas de mis clases','clases'],
+    ['22:00','23:00','Descanso y dormir','descanso']
+  ],
+  // Sábado (no trabajo)
+  sabado: [
+    ['07:30','08:00','Desayuno','comida'],
+    ['08:00','10:00','','estudio'],
+    ['10:00','10:30','Descanso','descanso'],
+    ['10:30','12:30','','estudio'],
+    ['12:30','13:30','Almuerzo','comida'],
+    ['13:30','15:00','Oficios de la casa','casa'],
+    ['15:00','17:00','Tareas de mis clases','clases'],
+    ['17:00','19:00','Tiempo libre','descanso'],
+    ['19:00','20:00','Cena','comida']
+  ],
+  // Domingo
+  domingo: [
+    ['08:00','09:00','Desayuno y descanso','comida'],
+    ['09:00','11:00','','estudio'],
+    ['11:00','12:00','Oficios de la casa','casa'],
+    ['12:00','13:00','Almuerzo','comida'],
+    ['13:00','15:00','Tareas de mis clases','clases'],
+    ['15:00','17:00','','estudio'],
+    ['17:00','19:00','Descanso libre','descanso'],
+    ['19:00','20:00','Cena','comida'],
+    ['20:00','21:00','Preparar la semana','otro']
+  ]
+};
+
+const DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+const HORA_INI_GRID = 6;    // el calendario muestra de 6:00
+const HORA_FIN_GRID = 23;   // hasta 23:00
+
+/* ==================== 3. AYUDAS PARA FECHAS Y HORAS ==================== */
+
+// "2026-10-22" -> objeto fecha (a mediodía no hace falta; usamos hora local)
+function aFecha(txt) { const [y, m, d] = txt.split('-').map(Number); return new Date(y, m - 1, d); }
+// objeto fecha -> "2026-10-22"
+function aTexto(f) {
+  return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+}
+function sumarDias(txt, n) { const f = aFecha(txt); f.setDate(f.getDate() + n); return aTexto(f); }
+// "08:30" -> 510 (minutos desde la medianoche)
+function minutos(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
+function horasEntre(ini, fin) { return (minutos(fin) - minutos(ini)) / 60; }
+// Lunes de la semana de esa fecha
+function lunesDe(txt) { const f = aFecha(txt); f.setDate(f.getDate() - ((f.getDay() + 6) % 7)); return aTexto(f); }
+function mayus(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function etiquetaDia(txt) {
+  const f = aFecha(txt);
+  return mayus(DIAS[f.getDay()]) + ' ' + f.getDate() + ' de ' + MESES[f.getMonth()] + ' de ' + f.getFullYear();
+}
+function etiquetaCorta(txt) { const f = aFecha(txt); return f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3); }
+function redondear(n) { return Math.round(n * 10) / 10; }
+// Evita que un texto escrito por mí rompa el HTML
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ==================== 4. CREAR EL PLAN AUTOMÁTICO ==================== */
+
+let contadorId = 0;
+function nuevoId() { return Date.now().toString(36) + (contadorId++) + Math.random().toString(36).slice(2, 6); }
+
+function nuevaTarea(fecha, ini, fin, titulo, tipo, curso) {
+  return { id: nuevoId(), fecha, ini, fin, titulo, tipo, curso: curso || '', hecho: false };
+}
+
+// ¿Qué plantilla toca este día?
+function plantillaDelDia(txt) {
+  if (txt < PRIMER_DIA_TRABAJO) return PLANTILLAS.libre;
+  const dia = aFecha(txt).getDay();    // 0 = domingo ... 6 = sábado
+  if (dia === 0) return PLANTILLAS.domingo;
+  if (dia === 6) return PLANTILLAS.sabado;
+  return PLANTILLAS.trabajo;
+}
+
+// Recorre día por día y va llenando los huecos de estudio con los cursos, en orden.
+function crearPlan(horasPorCurso) {
+  const tareas = [];
+  const faltan = CURSOS.map(c => ({ curso: c, horas: horasPorCurso[c.id] }));
+  let actual = 0;   // curso que toca ahora
+
+  for (let dia = INICIO; dia <= FIN; dia = sumarDias(dia, 1)) {
+    for (const [ini, fin, titulo, tipo] of plantillaDelDia(dia)) {
+      if (tipo !== 'estudio') { tareas.push(nuevaTarea(dia, ini, fin, titulo, tipo)); continue; }
+
+      // Salta los cursos ya terminados o cuyo plazo ya pasó
+      while (actual < faltan.length && (faltan[actual].horas <= 0 || dia > faltan[actual].curso.limite)) actual++;
+
+      if (actual < faltan.length) {
+        const c = faltan[actual].curso;
+        tareas.push(nuevaTarea(dia, ini, fin, 'Estudiar: ' + c.nombre, c.tipo, c.id));
+        faltan[actual].horas -= horasEntre(ini, fin);
+      } else {
+        tareas.push(nuevaTarea(dia, ini, fin, 'Repaso y práctica libre', 'otro'));
+      }
+    }
+  }
+  return tareas;
+}
+
+function horasPorDefecto() {
+  const h = {}; CURSOS.forEach(c => h[c.id] = c.horas); return h;
+}
+
+/* ==================== 5. GUARDAR Y CARGAR (localStorage) ==================== */
+
+const CLAVE = 'cronograma_cisco_juan_v1';
+let estado;   // { tareas: [...], horas: {curso: horas} }
+
+function cargarGuardado() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLAVE));
+    if (d && Array.isArray(d.tareas)) return d;
+  } catch (e) { /* si falla, se crea un plan nuevo */ }
+  return null;
+}
+function guardar() {
+  try { localStorage.setItem(CLAVE, JSON.stringify(estado)); }
+  catch (e) { avisar('⚠️ No pude guardar en este navegador (¿modo privado?).'); }
+}
+
+let temporizadorAviso;
+function avisar(texto) {
+  const a = document.getElementById('aviso');
+  a.textContent = texto; a.classList.add('ver');
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => a.classList.remove('ver'), 3500);
+}
+
+/* ==================== 6. CONSULTAS ==================== */
+
+const hoyReal = aTexto(new Date());
+// Si hoy está fuera del plan, mostramos el día más cercano que sí está
+let diaSel = hoyReal < INICIO ? INICIO : (hoyReal > FIN ? FIN : hoyReal);
+let semanaIni = lunesDe(diaSel);
+
+function tareasDelDia(txt) {
+  return estado.tareas.filter(t => t.fecha === txt).sort((a, b) => minutos(a.ini) - minutos(b.ini));
+}
+function buscar(id) { return estado.tareas.find(t => t.id === id); }
+function esAhora(t) {
+  if (t.fecha !== hoyReal) return false;
+  const d = new Date(); const m = d.getHours() * 60 + d.getMinutes();
+  return m >= minutos(t.ini) && m < minutos(t.fin);
+}
+
+/* ==================== 7. DIBUJAR LA PÁGINA ==================== */
+
+// Una tarea en forma de fila (se usa en "Hoy" y en la semana del celular)
+function itemTarea(t, compacto) {
+  const tipo = TIPOS[t.tipo] || TIPOS.otro;
+  const li = document.createElement('li');
+  li.className = 'item' + (t.hecho ? ' hecho' : '') + (esAhora(t) ? ' ahora' : '') + (compacto ? ' compacto' : '');
+  li.style.setProperty('--color', tipo.color);
+  li.innerHTML =
+    '<label class="check"><input type="checkbox" data-hecho="' + t.id + '"' + (t.hecho ? ' checked' : '') + ' aria-label="Marcar como hecha">' +
+      '<span class="hora">' + t.ini + '–' + t.fin + '</span></label>' +
+    '<div class="texto" data-editar="' + t.id + '"><b>' + esc(t.titulo) + '</b>' +
+      '<span class="chip">' + esc(tipo.nombre) + '</span>' +
+      (esAhora(t) ? '<span class="ahora-marca">AHORA</span>' : '') + '</div>' +
+    '<div class="botones"><button data-editar="' + t.id + '">Editar</button>' +
+      '<button class="peligro" data-borrar="' + t.id + '">Borrar</button></div>';
+  return li;
+}
+
+function textoProgreso(lista) {
+  const hechas = lista.filter(t => t.hecho).length;
+  const pct = lista.length ? Math.round(hechas * 100 / lista.length) : 0;
+  return { pct, texto: hechas + ' de ' + lista.length + ' tareas hechas (' + pct + '%)' };
+}
+
+function dibujarHoy() {
+  document.getElementById('fecha-hoy').textContent = 'Hoy es ' + etiquetaDia(hoyReal).toLowerCase();
+  document.getElementById('titulo-dia').textContent =
+    (diaSel === hoyReal ? '📍 HOY – ' : '') + etiquetaDia(diaSel);
+  const lista = tareasDelDia(diaSel);
+  const p = textoProgreso(lista);
+  document.getElementById('barra-dia').style.width = p.pct + '%';
+  document.getElementById('texto-dia').textContent = p.texto;
+  const ul = document.getElementById('lista-hoy');
+  ul.innerHTML = '';
+  if (!lista.length) ul.innerHTML = '<li class="vacio">No hay tareas este día. Usa “Agregar tarea”.</li>';
+  lista.forEach(t => ul.appendChild(itemTarea(t, false)));
+}
+
+// Reparte tareas que se pisan en columnas lado a lado
+function carriles(lista) {
+  const salida = [];
+  let grupo = [], finGrupo = 0;
+  function cerrar() {
+    const fines = [];
+    grupo.forEach(t => {
+      let c = fines.findIndex(f => f <= minutos(t.ini));
+      if (c < 0) { c = fines.length; fines.push(0); }
+      fines[c] = minutos(t.fin);
+      salida.push({ t, c, n: 0, grupo });
+    });
+    const n = fines.length;
+    salida.filter(s => s.grupo === grupo).forEach(s => s.n = n);
+    grupo = [];
+  }
+  lista.forEach(t => {
+    if (grupo.length && minutos(t.ini) >= finGrupo) cerrar();
+    finGrupo = grupo.length ? Math.max(finGrupo, minutos(t.fin)) : minutos(t.fin);
+    grupo.push(t);
+  });
+  if (grupo.length) cerrar();
+  return salida;
+}
+
+function dibujarSemana() {
+  const dias = [];
+  for (let i = 0; i < 7; i++) dias.push(sumarDias(semanaIni, i));
+  document.getElementById('titulo-semana').textContent =
+    etiquetaCorta(dias[0]) + ' – ' + etiquetaCorta(dias[6]) + ' ' + aFecha(dias[6]).getFullYear();
+
+  const todas = dias.flatMap(d => tareasDelDia(d));
+  const p = textoProgreso(todas);
+  document.getElementById('barra-sem').style.width = p.pct + '%';
+  document.getElementById('texto-sem').textContent = p.texto;
+
+  // --- Calendario con horas (pantalla ancha) ---
+  const PX = 44;   // alto de una hora (igual que --alto-hora)
+  let html = '<div class="cab" style="border-left:0">Hora</div>';
+  dias.forEach(d => {
+    const t = tareasDelDia(d);
+    html += '<div class="cab' + (d === hoyReal ? ' hoy' : '') + '">' + mayus(DIAS[aFecha(d).getDay()]).slice(0, 3) +
+      ' ' + aFecha(d).getDate() + '<br><small>' + t.filter(x => x.hecho).length + '/' + t.length + '</small></div>';
+  });
+  html += '<div class="horas">';
+  for (let h = HORA_INI_GRID; h <= HORA_FIN_GRID; h++) {
+    html += '<span style="top:' + ((h - HORA_INI_GRID) * PX) + 'px">' + h + ':00</span>';
+  }
+  html += '</div>';
+  dias.forEach(d => {
+    html += '<div class="col' + (d === hoyReal ? ' hoy' : '') + '">';
+    carriles(tareasDelDia(d)).forEach(({ t, c, n }) => {
+      const ini = Math.max(minutos(t.ini), HORA_INI_GRID * 60);
+      const fin = Math.min(minutos(t.fin), HORA_FIN_GRID * 60);
+      if (fin <= ini) return;
+      const alto = Math.max((fin - ini) * PX / 60, 14);
+      const tipo = TIPOS[t.tipo] || TIPOS.otro;
+      html += '<div class="bloque' + (t.hecho ? ' hecho' : '') + '" data-editar="' + t.id + '" title="' +
+        esc(t.ini + '–' + t.fin + ' ' + t.titulo) + '" style="--color:' + tipo.color +
+        ';top:' + ((ini - HORA_INI_GRID * 60) * PX / 60) + 'px;height:' + alto +
+        'px;left:' + (c * 100 / n) + '%;width:' + (100 / n) + '%">' + esc(t.titulo) +
+        (alto >= 34 ? '<small>' + t.ini + '–' + t.fin + '</small>' : '') + '</div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('semana-grid').innerHTML = html;
+
+  // --- Lista por día (celular) ---
+  const cont = document.getElementById('semana-lista');
+  cont.innerHTML = '';
+  dias.forEach(d => {
+    const tarjeta = document.createElement('div');
+    tarjeta.className = 'dia-tarjeta';
+    tarjeta.innerHTML = '<h3' + (d === hoyReal ? ' class="hoy"' : '') + '>' + etiquetaDia(d) + '</h3>';
+    const ul = document.createElement('ul'); ul.className = 'lista';
+    const lista = tareasDelDia(d);
+    if (!lista.length) ul.innerHTML = '<li class="vacio">Sin tareas.</li>';
+    lista.forEach(t => ul.appendChild(itemTarea(t, true)));
+    tarjeta.appendChild(ul);
+    cont.appendChild(tarjeta);
+  });
+}
+
+function dibujarLeyenda() {
+  document.getElementById('leyenda').innerHTML = Object.values(TIPOS)
+    .map(t => '<span style="--color:' + t.color + '">' + esc(t.nombre) + '</span>').join('');
+}
+
+// Panel honesto: ¿cabe cada curso antes de su fecha límite?
+function dibujarCursos() {
+  let totalFalta = 0, hechasTotal = 0;
+  const cont = document.getElementById('lista-cursos');
+  cont.innerHTML = '';
+
+  CURSOS.forEach(c => {
+    const necesito = Number(estado.horas[c.id]) || 0;
+    // Solo cuentan las tareas de estudio de ese curso que caen ANTES del límite
+    const mias = estado.tareas.filter(t => t.curso === c.id && t.fecha <= c.limite);
+    const planeadas = redondear(mias.reduce((s, t) => s + horasEntre(t.ini, t.fin), 0));
+    const hechas = redondear(mias.filter(t => t.hecho).reduce((s, t) => s + horasEntre(t.ini, t.fin), 0));
+    const falta = Math.max(0, redondear(necesito - planeadas));
+    totalFalta += falta; hechasTotal += hechas;
+
+    let estadoTxt;
+    if (falta === 0) estadoTxt = '<span class="estado-ok">✅ Sí cabe</span>';
+    else if (planeadas === 0) estadoTxt = '<span class="estado-mal">❌ No cabe: no queda tiempo antes del límite</span>';
+    else estadoTxt = '<span class="estado-med">⚠️ No cabe completo: faltan ' + falta + ' h</span>';
+
+    const div = document.createElement('div');
+    div.className = 'curso';
+    div.style.setProperty('--color', TIPOS[c.tipo].color);
+    div.innerHTML =
+      '<h3>' + esc(c.nombre) + ' – ' + estadoTxt + '</h3>' +
+      '<div class="fila"><span>Límite: <b>' + etiquetaCorta(c.limite) + ' ' + aFecha(c.limite).getFullYear() + '</b></span>' +
+        '<label>Horas que necesito: <input type="number" min="0" max="500" step="5" value="' + necesito + '" data-horas="' + c.id + '"></label>' +
+        '<span>Planeadas: <b>' + planeadas + ' h</b></span><span>Hechas: <b>' + hechas + ' h</b></span></div>' +
+      '<div class="progreso"><div style="width:' + (necesito ? Math.min(100, hechas * 100 / necesito) : 0) + '%"></div></div>';
+    cont.appendChild(div);
+  });
+
+  // Mensaje general en palabras simples
+  const resumen = document.getElementById('resumen-cursos');
+  const semanasQueQuedan = Math.max(1, (aFecha(FIN) - aFecha(hoyReal < INICIO ? INICIO : hoyReal)) / 86400000 / 7);
+  if (totalFalta > 0) {
+    resumen.innerHTML = '<div class="aviso"><b>Siendo honesto:</b> con tu trabajo, tus clases, la casa y el descanso, ' +
+      '<b>no alcanza el tiempo para terminar todo</b>. Te faltan unas <b>' + redondear(totalFalta) + ' horas</b> de estudio. ' +
+      'Para que todo cupiera tendrías que estudiar unas <b>' + Math.ceil(totalFalta / semanasQueQuedan) +
+      ' horas más cada semana</b>. Los cursos con ✅ sí los terminas; el resto conviene priorizarlo (mira abajo cuáles).<br>' +
+      '<small>Las horas son cálculos aproximados. Si ya sabes algo del tema, baja el número y verás cómo cambia. ' +
+      'Si quieres que el plan se reparta con tus nuevos números, usa “Rehacer el plan desde cero”.</small></div>';
+  } else {
+    resumen.innerHTML = '<div class="aviso" style="background:#f0fdf4;border-color:#86efac"><b>¡Buenas noticias!</b> ' +
+      'Con estos números todos los cursos caben antes de su fecha límite.</div>';
+  }
+}
+
+function dibujarTodo() { dibujarHoy(); dibujarSemana(); dibujarCursos(); }
+
+/* ==================== 8. VENTANA PARA AGREGAR / EDITAR ==================== */
+
+const dlg = document.getElementById('dlg');
+let editandoId = null;
+
+function llenarListas() {
+  document.getElementById('f-tipo').innerHTML =
+    Object.entries(TIPOS).map(([k, v]) => '<option value="' + k + '">' + esc(v.nombre) + '</option>').join('');
+  document.getElementById('f-curso').innerHTML = '<option value="">(ninguno)</option>' +
+    CURSOS.map(c => '<option value="' + c.id + '">' + esc(c.nombre) + '</option>').join('');
+}
+
+function abrirFormulario(id) {
+  editandoId = id || null;
+  const t = id ? buscar(id) : null;
+  document.getElementById('dlg-titulo').textContent = t ? 'Editar tarea' : 'Agregar tarea';
+  document.getElementById('f-titulo').value = t ? t.titulo : '';
+  document.getElementById('f-fecha').value = t ? t.fecha : diaSel;
+  document.getElementById('f-ini').value = t ? t.ini : '09:00';
+  document.getElementById('f-fin').value = t ? t.fin : '10:00';
+  document.getElementById('f-tipo').value = t ? t.tipo : 'cisco';
+  document.getElementById('f-curso').value = t ? t.curso : '';
+  document.getElementById('f-hecho').checked = t ? t.hecho : false;
+  document.getElementById('fila-hecho').style.display = t ? 'block' : 'none';
+  document.getElementById('f-borrar').style.display = t ? 'inline-block' : 'none';
+  dlg.showModal();
+}
+
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const curso = document.getElementById('f-curso').value;
+  const c = CURSOS.find(x => x.id === curso);
+  let titulo = document.getElementById('f-titulo').value.trim();
+  let tipo = document.getElementById('f-tipo').value;
+  const fecha = document.getElementById('f-fecha').value;
+  const ini = document.getElementById('f-ini').value;
+  const fin = document.getElementById('f-fin').value;
+
+  if (!titulo && c) titulo = 'Estudiar: ' + c.nombre;
+  if (!titulo) { avisar('Escribe qué vas a hacer.'); return; }
+  if (!fecha || !ini || !fin) { avisar('Falta el día o la hora.'); return; }
+  if (minutos(fin) <= minutos(ini)) { avisar('La hora final debe ser después de la inicial.'); return; }
+
+  if (editandoId) {
+    Object.assign(buscar(editandoId), { titulo, tipo, fecha, ini, fin, curso, hecho: document.getElementById('f-hecho').checked });
+  } else {
+    estado.tareas.push(nuevaTarea(fecha, ini, fin, titulo, tipo, curso));
+  }
+  guardar();
+  dlg.close();
+  dibujarTodo();
+  avisar('✅ Guardado');
+});
+
+document.getElementById('f-cancelar').addEventListener('click', () => dlg.close());
+document.getElementById('f-borrar').addEventListener('click', () => { if (editandoId) borrarTarea(editandoId); dlg.close(); });
+
+function borrarTarea(id) {
+  const t = buscar(id);
+  if (!t) return;
+  if (!confirm('¿Borrar “' + t.titulo + '”?')) return;
+  estado.tareas = estado.tareas.filter(x => x.id !== id);
+  guardar(); dibujarTodo();
+}
+
+/* ==================== 9. BOTONES Y CLICS ==================== */
+
+// Un solo "oído" para todos los clics de las listas
+document.addEventListener('click', e => {
+  const ed = e.target.closest('[data-editar]');
+  if (ed) { abrirFormulario(ed.dataset.editar); return; }
+  const bo = e.target.closest('[data-borrar]');
+  if (bo) borrarTarea(bo.dataset.borrar);
+});
+document.addEventListener('change', e => {
+  if (e.target.dataset.hecho) {
+    const t = buscar(e.target.dataset.hecho);
+    if (t) { t.hecho = e.target.checked; guardar(); dibujarTodo(); }
+  }
+  if (e.target.dataset.horas) {
+    estado.horas[e.target.dataset.horas] = Math.max(0, Number(e.target.value) || 0);
+    guardar(); dibujarCursos();
+  }
+});
+
+document.getElementById('btn-agregar').addEventListener('click', () => abrirFormulario());
+document.getElementById('dia-ant').addEventListener('click', () => { diaSel = sumarDias(diaSel, -1); dibujarHoy(); });
+document.getElementById('dia-sig').addEventListener('click', () => { diaSel = sumarDias(diaSel, 1); dibujarHoy(); });
+document.getElementById('dia-hoy').addEventListener('click', () => {
+  diaSel = hoyReal < INICIO ? INICIO : (hoyReal > FIN ? FIN : hoyReal); dibujarHoy();
+});
+document.getElementById('sem-ant').addEventListener('click', () => { semanaIni = sumarDias(semanaIni, -7); dibujarSemana(); });
+document.getElementById('sem-sig').addEventListener('click', () => { semanaIni = sumarDias(semanaIni, 7); dibujarSemana(); });
+document.getElementById('sem-hoy').addEventListener('click', () => { semanaIni = lunesDe(hoyReal < INICIO ? INICIO : hoyReal); dibujarSemana(); });
+
+// Copia de seguridad: guardar en archivo
+document.getElementById('btn-exportar').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(estado)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'copia-cronograma-' + hoyReal + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  avisar('💾 Copia guardada en tus descargas');
+});
+// Copia de seguridad: cargar desde archivo
+document.getElementById('btn-importar').addEventListener('click', () => document.getElementById('archivo').click());
+document.getElementById('archivo').addEventListener('change', e => {
+  const archivo = e.target.files[0];
+  if (!archivo) return;
+  const lector = new FileReader();
+  lector.onload = () => {
+    try {
+      const d = JSON.parse(lector.result);
+      if (!d || !Array.isArray(d.tareas)) throw new Error('no es una copia');
+      if (!confirm('Esto reemplaza lo que tienes en este aparato por lo del archivo. ¿Seguro?')) return;
+      estado = { tareas: d.tareas, horas: d.horas || horasPorDefecto() };
+      guardar(); dibujarTodo(); avisar('📂 Copia cargada');
+    } catch (err) { avisar('⚠️ Ese archivo no es una copia válida.'); }
+  };
+  lector.readAsText(archivo);
+  e.target.value = '';
+});
+// Rehacer el plan
+document.getElementById('btn-rehacer').addEventListener('click', () => {
+  if (!confirm('Esto BORRA todas tus tareas y marcas y crea el plan de nuevo con las horas de “¿Me alcanza el tiempo?”. ¿Seguro?')) return;
+  estado.tareas = crearPlan(estado.horas);
+  guardar(); dibujarTodo(); avisar('🔁 Plan nuevo creado');
+});
+
+/* ==================== 10. ARRANQUE ==================== */
+
+estado = cargarGuardado();
+if (!estado) {                        // primera vez: se crea el plan
+  estado = { tareas: [], horas: horasPorDefecto() };
+  estado.tareas = crearPlan(estado.horas);
+  guardar();
+}
+if (!estado.horas) estado.horas = horasPorDefecto();
+llenarListas();
+dibujarLeyenda();
+dibujarTodo();
+// Cada minuto se actualiza la marca "AHORA"
+setInterval(dibujarHoy, 60000);
+</script>
+</body>
+</html>
