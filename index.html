@@ -14,6 +14,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi cronograma de estudio</title>
 
+<!-- Ajustes para que en el celular se vea y se abra como una app -->
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Estudio">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" type="image/png" href="icono-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
 <style>
 /* ==================== 1. ESTILOS (CSS) ==================== */
 
@@ -235,6 +245,10 @@ details summary { cursor: pointer; font-weight: 700; }
     <details>
       <summary>⚙️ Más opciones (copia de seguridad y rehacer el plan)</summary>
       <p>Tus datos se guardan solo en <b>este</b> navegador. Para pasarlos a otro aparato (celular ↔ PC) guarda una copia y cárgala allá.</p>
+      <p><b>Avisos en el celular:</b> toca el botón de abajo, abre el archivo que se descarga y elige “Agregar todo” en el Calendario. Cada bloque de estudio te avisará 10 minutos antes, aunque esta página esté cerrada.</p>
+      <div class="barra">
+        <button id="btn-calendario" class="principal">🔔 Exportar el estudio a mi calendario</button>
+      </div>
       <div class="barra">
         <button id="btn-exportar">💾 Guardar copia en un archivo</button>
         <button id="btn-importar">📂 Cargar copia desde un archivo</button>
@@ -765,6 +779,36 @@ document.getElementById('dia-hoy').addEventListener('click', () => {
 document.getElementById('sem-ant').addEventListener('click', () => { semanaIni = sumarDias(semanaIni, -7); dibujarSemana(); });
 document.getElementById('sem-sig').addEventListener('click', () => { semanaIni = sumarDias(semanaIni, 7); dibujarSemana(); });
 document.getElementById('sem-hoy').addEventListener('click', () => { semanaIni = lunesDe(hoyReal < INICIO ? INICIO : hoyReal); dibujarSemana(); });
+
+// Exportar los bloques de estudio a un archivo de calendario (.ics).
+// Cada bloque trae un aviso 10 minutos antes. Solo se exporta desde hoy en adelante.
+function textoIcs(s) { return String(s).replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n'); }
+function fechaIcs(fecha, hora) { return fecha.replace(/-/g, '') + 'T' + hora.replace(':', '') + '00'; }
+document.getElementById('btn-calendario').addEventListener('click', () => {
+  const desde = hoyReal < INICIO ? INICIO : hoyReal;
+  const lista = estado.tareas.filter(t => (t.tipo === 'cisco' || t.tipo === 'ingles') && t.fecha >= desde && !t.hecho);
+  if (!lista.length) { avisar('No hay bloques de estudio para exportar.'); return; }
+  const ahora = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const lineas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mi cronograma//ES', 'CALSCALE:GREGORIAN'];
+  lista.forEach(t => {
+    lineas.push('BEGIN:VEVENT',
+      'UID:' + t.id + '@cronograma',
+      'DTSTAMP:' + ahora,
+      'DTSTART:' + fechaIcs(t.fecha, t.ini),    // hora local, sin zona: sale a la hora que escribiste
+      'DTEND:' + fechaIcs(t.fecha, t.fin),
+      'SUMMARY:' + textoIcs(t.titulo),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + textoIcs(t.titulo), 'TRIGGER:-PT10M', 'END:VALARM',
+      'END:VEVENT');
+  });
+  lineas.push('END:VCALENDAR');
+  const blob = new Blob([lineas.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'estudio.ics';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  avisar('🔔 ' + lista.length + ' bloques exportados');
+});
 
 // Copia de seguridad: guardar en archivo
 document.getElementById('btn-exportar').addEventListener('click', () => {
